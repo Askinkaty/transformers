@@ -467,6 +467,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin):
 
         if state_dict is None and not from_tf:
             try:
+                print(resolved_archive_file)
                 state_dict = torch.load(resolved_archive_file, map_location="cpu")
             except Exception:
                 raise OSError(
