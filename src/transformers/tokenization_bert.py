@@ -50,6 +50,7 @@ PRETRAINED_VOCAB_FILES_MAP = {
         "bert-base-finnish-cased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-cased-v1/vocab.txt",
         "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/vocab.txt",
         "bert-base-dutch-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/wietsedv/bert-base-dutch-cased/vocab.txt",
+        "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/vocab.txt"
     }
 }
 
@@ -72,6 +73,7 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
     "bert-base-finnish-cased-v1": 512,
     "bert-base-finnish-uncased-v1": 512,
     "bert-base-dutch-cased": 512,
+    "bert-base-russian-cased": 512
 }
 
 PRETRAINED_INIT_CONFIGURATION = {
@@ -93,6 +95,7 @@ PRETRAINED_INIT_CONFIGURATION = {
     "bert-base-finnish-cased-v1": {"do_lower_case": False},
     "bert-base-finnish-uncased-v1": {"do_lower_case": True},
     "bert-base-dutch-cased": {"do_lower_case": False},
+    "bert-base-russian-cased": {"do_lower_case": False}
 }
 
 
