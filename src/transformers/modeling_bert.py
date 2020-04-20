@@ -28,7 +28,7 @@ from .activations import gelu, gelu_new, swish
 from .configuration_bert import BertConfig
 from .file_utils import add_start_docstrings, add_start_docstrings_to_callable
 from .modeling_utils import PreTrainedModel, prune_linear_layer
-
+from .losses import *
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ BERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/pytorch_model.bin",
     "bert-base-dutch-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/wietsedv/bert-base-dutch-cased/pytorch_model.bin",
     "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
+    # "bert-base-russian-cased": "/Users/katinska/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
 
 }
 
@@ -402,6 +403,7 @@ class BertEncoder(nn.Module):
         all_hidden_states = ()
         all_attentions = ()
         for i, layer_module in enumerate(self.layer):
+            print(i)
             if self.output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
@@ -422,6 +424,17 @@ class BertEncoder(nn.Module):
             outputs = outputs + (all_hidden_states,)
         if self.output_attentions:
             outputs = outputs + (all_attentions,)
+        if self.output_hidden_states and self.output_attentions:
+            outputs = outputs + (all_hidden_states,)
+            outputs = outputs + (all_attentions,)
+        # print('Encoder outputs:', len(outputs)) # 2
+        # print(outputs[0].shape) # torch.Size([20, 256, 768])
+        # print(len(outputs[1])) # 13
+        # print(outputs[1][1].shape) # torch.Size([20, 256, 768])
+        # Encoder outputs: 2
+        # torch.Size([20, 256, 768])
+        # 13
+        # torch.Size([20, 256, 768])
         return outputs  # last-layer hidden state, (all hidden states), (all attentions)
 
 
@@ -792,12 +805,17 @@ class BertModel(BertPreTrainedModel):
             encoder_attention_mask=encoder_extended_attention_mask,
         )
         sequence_output = encoder_outputs[0]
+        all_hidden_states = encoder_outputs[1]
+        all_attentions = encoder_outputs[2]
+        # print('ALL H st:', len(all_hidden_states))
         pooled_output = self.pooler(sequence_output)
 
         outputs = (sequence_output, pooled_output,) + encoder_outputs[
-            1:
-        ]  # add hidden_states and attentions if they are here
-        return outputs  # sequence_output, pooled_output, (hidden_states), (attentions)
+            1:]
+
+        # print('Bert outputs len: ', len(outputs))
+        # add hidden_states and attentions if they are here
+        return outputs, all_hidden_states, all_attentions  # sequence_output, pooled_output, (hidden_states), (attentions)
 
 
 @add_start_docstrings(
@@ -1311,7 +1329,9 @@ class BertForTokenClassification(BertPreTrainedModel):
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
-
+        self.loss_type = config.loss_type
+        self.loss_weight = config.loss_weight
+        print('LOSS TYPE: ', self.loss_type)
         self.init_weights()
 
     @add_start_docstrings_to_callable(BERT_INPUTS_DOCSTRING)
@@ -1363,8 +1383,22 @@ class BertForTokenClassification(BertPreTrainedModel):
         loss, scores = outputs[:2]
 
         """
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
 
-        outputs = self.bert(
+        if self.loss_type == 'cross_entropy':
+            loss_fct = CrossEntropyLoss()
+        elif self.loss_type == 'w_cross_entropy':
+            weight = torch.from_numpy(np.array(self.loss_weight)).float()
+            loss_fct = CrossEntropyLoss(weight=weight)
+        elif self.loss_type == 'dice':
+            loss_fct = DiceLoss(device)
+        elif self.loss_type == 'tversky':
+            loss_fct = TverskyLoss(device)
+        elif self.loss_type == 'focal':
+            loss_fct = FocalLoss(device)
+
+
+        outputs, all_hidden_states, all_attentions = self.bert(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
@@ -1372,28 +1406,54 @@ class BertForTokenClassification(BertPreTrainedModel):
             head_mask=head_mask,
             inputs_embeds=inputs_embeds,
         )
-
+        # print(len(outputs))
         sequence_output = outputs[0]
 
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
 
         outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
+
+        # print('Logits shape', logits.shape)
+        # print('Labels shape', labels.shape)
+        # print('Att mask shape', attention_mask.shape)
+        # print('All attentions: ', len(all_attentions))
+        # print('All att shape:', all_attentions[0].shape)
+
         if labels is not None:
-            loss_fct = CrossEntropyLoss()
-            # Only keep active parts of the loss
-            if attention_mask is not None:
-                active_loss = attention_mask.view(-1) == 1
-                active_logits = logits.view(-1, self.num_labels)
-                active_labels = torch.where(
-                    active_loss, labels.view(-1), torch.tensor(loss_fct.ignore_index).type_as(labels)
-                )
-                loss = loss_fct(active_logits, active_labels)
+            if self.loss_type and self.loss_type in ['cross_entropy', 'w_cross_entropy']:
+                # Only keep active parts of the loss
+                if attention_mask is not None:
+                    active_loss = attention_mask.view(-1) == 1
+                    # print('active loss shape', active_loss.shape)
+                    active_logits = logits.view(-1, self.num_labels)
+                    # print('act logits', active_logits.shape)
+                    active_labels = torch.where(
+                        active_loss, labels.view(-1), torch.tensor(loss_fct.ignore_index).type_as(labels)
+                    )
+                    # print('act labels', active_labels.shape)
+                    loss = loss_fct(active_logits, active_labels)
+                else:
+                    loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             else:
-                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+                if attention_mask is not None:
+                    attention_mask = attention_mask.unsqueeze(-1)
+                    # print('att mask shape', attention_mask.shape)
+                    active_loss = attention_mask == 1
+                    # print('active loss shape', active_loss.shape)
+                    active_logits = logits
+                    labels = labels.unsqueeze(-1)
+                    # print('Labels shape', labels.shape)
+                    active_labels = torch.where(
+                        active_loss, labels, torch.tensor(loss_fct.ignore_index).type_as(labels)
+                    )
+                    # print('active labels shape', active_labels.shape)
+                    loss = loss_fct(active_logits, active_labels)
+                else:
+                    loss = loss_fct(logits, labels.unsqueeze(-1))
             outputs = (loss,) + outputs
 
-        return outputs  # (loss), scores, (hidden_states), (attentions)
+        return outputs, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
 
 
 @add_start_docstrings(

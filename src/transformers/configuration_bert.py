@@ -47,6 +47,8 @@ BERT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
     "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/config.json",
     "bert-base-dutch-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/wietsedv/bert-base-dutch-cased/config.json",
     "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/bert_config.json"
+    # "bert-base-russian-cased": "/Users/katinska/rubert_cased_L-12_H-768_A-12_pt/bert_config.json"
+
 }
 
 
@@ -141,3 +143,5 @@ class BertConfig(PretrainedConfig):
         self.type_vocab_size = type_vocab_size
         self.initializer_range = initializer_range
         self.layer_norm_eps = layer_norm_eps
+        self.loss_type = None
+        self.loss_weight = None
