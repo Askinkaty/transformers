@@ -191,10 +191,6 @@ class PretrainedConfig(object):
 
         """
         config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
-
-        print('config dict', config_dict)
-        print('kwargs', kwargs)
-
         return cls.from_dict(config_dict, **kwargs)
 
     @classmethod
@@ -232,9 +228,6 @@ class PretrainedConfig(object):
             config_file = pretrained_model_name_or_path
         else:
             config_file = hf_bucket_url(pretrained_model_name_or_path, postfix=CONFIG_NAME)
-
-        print('Config file <<<<<', config_file)
-
         try:
             # Load from URL or cache if already cached
             resolved_config_file = cached_path(
@@ -251,7 +244,6 @@ class PretrainedConfig(object):
             if resolved_config_file is None:
                 raise EnvironmentError
             config_dict = cls._dict_from_json_file(resolved_config_file)
-            print('Config dict', config_dict)
         except EnvironmentError:
             if pretrained_model_name_or_path in pretrained_config_archive_map:
                 msg = "Couldn't reach server at '{}' to download pretrained model configuration file.".format(
@@ -299,25 +291,19 @@ class PretrainedConfig(object):
             :class:`PretrainedConfig`: An instance of a configuration object
         """
         return_unused_kwargs = kwargs.pop("return_unused_kwargs", False)
-        print('CONFIG DICT1', config_dict)
         config = cls(**config_dict)
-        print('CONFIG1', config)
         if hasattr(config, "pruned_heads"):
             config.pruned_heads = dict((int(key), value) for key, value in config.pruned_heads.items())
 
-        print('pruned', config.pruned_heads)
         # Update config with kwargs if needed
         to_remove = []
         for key, value in kwargs.items():
             if hasattr(config, key):
                 setattr(config, key, value)
                 to_remove.append(key)
-        print('to remove', to_remove)
 
         for key in to_remove:
             kwargs.pop(key, None)
-
-        print('CONFIG', config)
 
         logger.info("Model config %s", str(config))
         if return_unused_kwargs:
