@@ -85,7 +85,7 @@ class PretrainedConfig(object):
         self.no_repeat_ngram_size = kwargs.pop("no_repeat_ngram_size", 0)
         self.num_return_sequences = kwargs.pop("num_return_sequences", 1)
 
-        self.loss_type = kwargs.pop("loss_type", None)
+        # self.loss_type = kwargs.pop("loss_type", None)
         # Fine-tuning task arguments
         self.architectures = kwargs.pop("architectures", None)
         self.finetuning_task = kwargs.pop("finetuning_task", None)
@@ -98,6 +98,7 @@ class PretrainedConfig(object):
         # Additional attributes without default values
         for key, value in kwargs.items():
             try:
+                print(key, value)
                 setattr(self, key, value)
             except AttributeError as err:
                 logger.error("Can't set {} with value {} for {}".format(key, value, self))
@@ -229,6 +230,8 @@ class PretrainedConfig(object):
         else:
             config_file = hf_bucket_url(pretrained_model_name_or_path, postfix=CONFIG_NAME)
 
+        print('Config file <<<<<', config_file)
+
         try:
             # Load from URL or cache if already cached
             resolved_config_file = cached_path(
@@ -239,11 +242,13 @@ class PretrainedConfig(object):
                 resume_download=resume_download,
                 local_files_only=local_files_only,
             )
+
+
             # Load config dict
             if resolved_config_file is None:
                 raise EnvironmentError
             config_dict = cls._dict_from_json_file(resolved_config_file)
-
+            print('Config dict', config_dict)
         except EnvironmentError:
             if pretrained_model_name_or_path in pretrained_config_archive_map:
                 msg = "Couldn't reach server at '{}' to download pretrained model configuration file.".format(
