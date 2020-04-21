@@ -403,7 +403,7 @@ class BertEncoder(nn.Module):
         all_hidden_states = ()
         all_attentions = ()
         for i, layer_module in enumerate(self.layer):
-            print(i)
+            # print(i)
             if self.output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
