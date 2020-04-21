@@ -85,6 +85,7 @@ class PretrainedConfig(object):
         self.no_repeat_ngram_size = kwargs.pop("no_repeat_ngram_size", 0)
         self.num_return_sequences = kwargs.pop("num_return_sequences", 1)
 
+        self.loss_type = kwargs.pop("loss_type", None)
         # Fine-tuning task arguments
         self.architectures = kwargs.pop("architectures", None)
         self.finetuning_task = kwargs.pop("finetuning_task", None)
