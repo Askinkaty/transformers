@@ -192,6 +192,10 @@ class PretrainedConfig(object):
 
         """
         config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
+
+        print('config dict', config_dict)
+        print('kwargs', kwargs)
+
         return cls.from_dict(config_dict, **kwargs)
 
     @classmethod
@@ -311,6 +315,8 @@ class PretrainedConfig(object):
         for key in to_remove:
             kwargs.pop(key, None)
 
+        print('CONFIG', config)
+        
         logger.info("Model config %s", str(config))
         if return_unused_kwargs:
             return config, kwargs
