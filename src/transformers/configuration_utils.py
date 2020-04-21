@@ -98,7 +98,6 @@ class PretrainedConfig(object):
         # Additional attributes without default values
         for key, value in kwargs.items():
             try:
-                print(key, value)
                 setattr(self, key, value)
             except AttributeError as err:
                 logger.error("Can't set {} with value {} for {}".format(key, value, self))
@@ -302,21 +301,24 @@ class PretrainedConfig(object):
         return_unused_kwargs = kwargs.pop("return_unused_kwargs", False)
 
         config = cls(**config_dict)
-
+        print('CONFIG1', config)
         if hasattr(config, "pruned_heads"):
             config.pruned_heads = dict((int(key), value) for key, value in config.pruned_heads.items())
 
+        print('pruned', config.pruned_heads)
         # Update config with kwargs if needed
         to_remove = []
         for key, value in kwargs.items():
             if hasattr(config, key):
                 setattr(config, key, value)
                 to_remove.append(key)
+        print('to remove', to_remove)
+
         for key in to_remove:
             kwargs.pop(key, None)
 
         print('CONFIG', config)
-        
+
         logger.info("Model config %s", str(config))
         if return_unused_kwargs:
             return config, kwargs
