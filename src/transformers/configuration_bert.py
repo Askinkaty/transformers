@@ -127,6 +127,8 @@ class BertConfig(PretrainedConfig):
         type_vocab_size=2,
         initializer_range=0.02,
         layer_norm_eps=1e-12,
+        loss_type=None,
+        loss_weight=None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -143,5 +145,5 @@ class BertConfig(PretrainedConfig):
         self.type_vocab_size = type_vocab_size
         self.initializer_range = initializer_range
         self.layer_norm_eps = layer_norm_eps
-        self.loss_type = None
-        self.loss_weight = None
+        self.loss_type = loss_type
+        self.loss_weight = loss_weight

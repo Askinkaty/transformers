@@ -299,7 +299,7 @@ class PretrainedConfig(object):
             :class:`PretrainedConfig`: An instance of a configuration object
         """
         return_unused_kwargs = kwargs.pop("return_unused_kwargs", False)
-
+        print('CONFIG DICT1', config_dict)
         config = cls(**config_dict)
         print('CONFIG1', config)
         if hasattr(config, "pruned_heads"):
