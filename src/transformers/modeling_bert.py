@@ -403,7 +403,6 @@ class BertEncoder(nn.Module):
         all_hidden_states = ()
         all_attentions = ()
         for i, layer_module in enumerate(self.layer):
-            # print(i)
             if self.output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
@@ -1388,7 +1387,7 @@ class BertForTokenClassification(BertPreTrainedModel):
         if self.loss_type == 'cross_entropy':
             loss_fct = CrossEntropyLoss()
         elif self.loss_type == 'w_cross_entropy':
-            weight = torch.from_numpy(np.array(self.loss_weight)).float()
+            weight = torch.from_numpy(np.array(self.loss_weight)).float().to(device)
             loss_fct = CrossEntropyLoss(weight=weight)
         elif self.loss_type == 'dice':
             loss_fct = DiceLoss(device)
