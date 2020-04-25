@@ -120,8 +120,8 @@ class TverskyLoss(nn.Module):
     def __init__(self, device, ignore_index=-100, reduction='mean'):
         super(TverskyLoss, self).__init__()
         self.reduction = reduction
-        self.alpha = 0.6
-        self.beta = 0.4
+        self.alpha = 0.5
+        self.beta = 0.5
         self.ignore_index = ignore_index
         self.device = device
         # if a = b = 0.5, Tversky loss reduce to Dice loss
