@@ -391,6 +391,7 @@ class BertEncoder(nn.Module):
         self.output_attentions = config.output_attentions
         self.output_hidden_states = config.output_hidden_states
         self.layer = nn.ModuleList([BertLayer(config) for _ in range(config.num_hidden_layers)])
+        print('Number of layers in Encoder: ', config.num_hidden_layers)
 
     def forward(
         self,

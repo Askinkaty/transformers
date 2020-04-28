@@ -129,6 +129,7 @@ class BertConfig(PretrainedConfig):
         layer_norm_eps=1e-12,
         loss_type=None,
         loss_weight=None,
+        pooler_num_attention_heads=12,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -147,3 +148,4 @@ class BertConfig(PretrainedConfig):
         self.layer_norm_eps = layer_norm_eps
         self.loss_type = loss_type
         self.loss_weight = loss_weight
+        self.pooler_num_attention_heads = pooler_num_attention_heads
