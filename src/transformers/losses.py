@@ -164,22 +164,23 @@ class TverskyLoss(nn.Module):
 
 
 class DiceLoss(nn.Module):
-    def __init__(self, ignore_index=-100, reduction='mean'):
+    def __init__(self, device, ignore_index=-100, reduction='mean'):
         super(DiceLoss, self).__init__()
         self.smooth = 1
         self.ignore_index = ignore_index
         self.reduction = reduction
+        self.device = device
 
     def forward(self, output, y):
         if self.ignore_index is not None:
             mask = y != self.ignore_index
-            #mask.cuda()
+            mask.to(self.device)
             # print(y.shape)
             y = y * (y != self.ignore_index).long()
             # print('output shape', output.shape)
             # print('mask shape', mask.shape)
             output = output.mul(mask)
-        target = make_one_hot(y, num_classes=2)#.cuda()
+        target = make_one_hot(y, num_classes=2).to(self.device)
         assert output.shape == target.shape
 
         target = target[:,:,-1].view(y.shape) # take only one column
