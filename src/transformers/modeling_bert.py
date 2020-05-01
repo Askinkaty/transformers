@@ -16,6 +16,7 @@
 """PyTorch BERT model. """
 
 
+
 import logging
 import math
 import os
@@ -29,6 +30,8 @@ from .configuration_bert import BertConfig
 from .file_utils import add_start_docstrings, add_start_docstrings_to_callable
 from .modeling_utils import PreTrainedModel, prune_linear_layer
 from .losses import *
+from sklearn.utils.class_weight import compute_class_weight
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +58,8 @@ BERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     "bert-base-finnish-cased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-cased-v1/pytorch_model.bin",
     "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/pytorch_model.bin",
     "bert-base-dutch-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/wietsedv/bert-base-dutch-cased/pytorch_model.bin",
-    "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
-    # "bert-base-russian-cased": "/Users/katinska/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
+    # "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
+    "bert-base-russian-cased": "/Users/katinska/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
 
 }
 
@@ -1431,7 +1434,13 @@ class BertForTokenClassification(BertPreTrainedModel):
                     active_labels = torch.where(
                         active_loss, labels.view(-1), torch.tensor(loss_fct.ignore_index).type_as(labels)
                     )
-                    # print('act labels', active_labels.shape)
+                    # # print('act labels', active_labels.shape)
+                    # if self.loss_type == 'w_cross_entropy':
+                    #     a_labels = [el for el in active_labels.tolist() if el!=-100]
+                    #     unique = np.unique(a_labels)
+                    #     class_weights = compute_class_weight('balanced', unique, a_labels)
+                    #     print(class_weights)
+
                     loss = loss_fct(active_logits, active_labels)
                 else:
                     loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
