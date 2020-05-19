@@ -383,9 +383,9 @@ class BasicTokenizer(object):
                 List of token not to split.
         """
         never_split = self.never_split + (never_split if never_split is not None else [])
-        print(text)
+        print('1', text)
         text = self._clean_text(text)
-        print(text)
+        print('2', text)
 
         # This was added on November 1st, 2018 for the multilingual and Chinese
         # models. This is also applied to the English models now, but it doesn't
@@ -400,9 +400,9 @@ class BasicTokenizer(object):
         for token in orig_tokens:
             if self.do_lower_case and token not in never_split:
                 token = token.lower()
-                print(token)
+                print('3', token)
                 token = self._run_strip_accents(token)
-                print(token)
+                print('4', token)
             split_tokens.extend(self._run_split_on_punc(token, never_split))
 
         output_tokens = whitespace_tokenize(" ".join(split_tokens))
