@@ -650,7 +650,9 @@ class PreTrainedTokenizer(object):
             new_tokens = [new_tokens]
 
         to_add_tokens = []
+
         for token in new_tokens:
+            print(self.convert_tokens_to_ids(token) == self.convert_tokens_to_ids(self.unk_token))
             assert isinstance(token, str)
             if self.init_kwargs.get("do_lower_case", False) and token not in self.all_special_tokens:
                 token = token.lower()
