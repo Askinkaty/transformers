@@ -50,8 +50,8 @@ PRETRAINED_VOCAB_FILES_MAP = {
         "bert-base-finnish-cased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-cased-v1/vocab.txt",
         "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/vocab.txt",
         "bert-base-dutch-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/wietsedv/bert-base-dutch-cased/vocab.txt",
-        # "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/vocab.txt"
-        "bert-base-russian-cased": "/home/katinska/rubert_cased_L-12_H-768_A-12_pt/vocab.txt"
+        "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/vocab.txt"
+        # "bert-base-russian-cased": "/home/katinska/rubert_cased_L-12_H-768_A-12_pt/vocab.txt"
 }
 }
 
@@ -383,9 +383,7 @@ class BasicTokenizer(object):
                 List of token not to split.
         """
         never_split = self.never_split + (never_split if never_split is not None else [])
-        print('1', text)
         text = self._clean_text(text)
-        print('2', text)
 
         # This was added on November 1st, 2018 for the multilingual and Chinese
         # models. This is also applied to the English models now, but it doesn't
@@ -400,9 +398,7 @@ class BasicTokenizer(object):
         for token in orig_tokens:
             if self.do_lower_case and token not in never_split:
                 token = token.lower()
-                print('3', token)
-                token = self._run_strip_accents(token)
-                print('4', token)
+                # token = self._run_strip_accents(token)
             split_tokens.extend(self._run_split_on_punc(token, never_split))
 
         output_tokens = whitespace_tokenize(" ".join(split_tokens))
