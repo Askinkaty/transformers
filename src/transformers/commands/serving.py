@@ -167,7 +167,6 @@ class ServeCommand(BaseTransformersCLICommand):
         """
         try:
             tokens_txt = self._pipeline.tokenizer.tokenize(text_input)
-
             if return_ids:
                 tokens_ids = self._pipeline.tokenizer.convert_tokens_to_ids(tokens_txt)
                 return ServeTokenizeResult(tokens=tokens_txt, tokens_ids=tokens_ids)
