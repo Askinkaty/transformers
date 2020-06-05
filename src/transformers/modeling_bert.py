@@ -1357,7 +1357,6 @@ class BertCRFForTokenClassification(BertPreTrainedModel):
 
     def _to_crf_pad(self, org_array, org_mask, pad_label_id):
         crf_array = [aa[bb] for aa, bb in zip(org_array, org_mask)]
-        print(crf_array)
         crf_array = pad_sequence(crf_array, batch_first=True, padding_value=pad_label_id)
         crf_pad = (crf_array != pad_label_id)
         # the viterbi decoder function in CRF makes use of multiplicative property of 0, then pads wrong numbers out.
