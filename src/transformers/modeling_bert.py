@@ -31,6 +31,9 @@ from .file_utils import add_start_docstrings, add_start_docstrings_to_callable
 from .modeling_utils import PreTrainedModel, prune_linear_layer
 from .losses import *
 from sklearn.utils.class_weight import compute_class_weight
+from .crf import *
+from torch.nn.utils.rnn import pad_sequence
+
 
 
 logger = logging.getLogger(__name__)
@@ -1317,6 +1320,126 @@ class BertForMultipleChoice(BertPreTrainedModel):
             outputs = (loss,) + outputs
 
         return outputs  # (loss), reshaped_logits, (hidden_states), (attentions)
+
+
+
+@add_start_docstrings(
+    """Bert Model with a token classification head on top (CRF on top of
+    the hidden-states output) e.g. for Named-Entity-Recognition (NER) tasks. """,
+    BERT_START_DOCSTRING,
+)
+class BertCRFForTokenClassification(BertPreTrainedModel):
+    def __init__(self, config):
+        super(BertCRFForTokenClassification).__init__(config)
+        self.num_labels = config.num_labels
+
+        self.bert = BertModel(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.classifier = nn.Linear(config.hidden_size, config.num_labels + 2)
+        self.crf = CRF(self.num_labels)
+        self.loss_type = config.loss_type
+        self.loss_weight = config.loss_weight
+        # print('LOSS TYPE: ', self.loss_type)
+        self.init_weights()
+
+    def _get_features(self, input_ids=None, attention_mask=None, token_type_ids=None,
+                      position_ids=None, head_mask=None, inputs_embeds=None):
+        outputs, all_hidden_states, all_attentions = self.bert(input_ids,
+                            attention_mask=attention_mask,
+                            token_type_ids=token_type_ids,
+                            position_ids=position_ids,
+                            head_mask=head_mask,
+                            inputs_embeds=inputs_embeds)
+        sequence_output = outputs[0]
+        sequence_output = self.dropout(sequence_output)
+        feats = self.classifier(sequence_output)
+        return feats, outputs
+
+    def _to_crf_pad(self, org_array, org_mask, pad_label_id):
+        crf_array = [aa[bb] for aa, bb in zip(org_array, org_mask)]
+        crf_array = pad_sequence(crf_array, batch_first=True, padding_value=pad_label_id)
+        crf_pad = (crf_array != pad_label_id)
+        # the viterbi decoder function in CRF makes use of multiplicative property of 0, then pads wrong numbers out.
+        # Need a*0 = 0 for CRF to work.
+        crf_array[~crf_pad] = 0
+        return crf_array, crf_pad
+
+    def _unpad_crf(self, returned_array, returned_mask, org_array, org_mask):
+        out_array = org_array.clone().detach()
+        out_array[org_mask] = returned_array[returned_mask]
+        return out_array
+
+    @add_start_docstrings_to_callable(BERT_INPUTS_DOCSTRING)
+    @add_start_docstrings_to_callable(BERT_INPUTS_DOCSTRING)
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        labels=None,
+        pad_token_label_id=None
+    ):
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+
+        # if self.loss_type == 'cross_entropy':
+        #     loss_fct = CrossEntropyLoss()
+        # elif self.loss_type == 'w_cross_entropy':
+        #     weight = torch.from_numpy(np.array(self.loss_weight)).float().to(device)
+        #     loss_fct = CrossEntropyLoss(weight=weight)
+        # elif self.loss_type == 'dice':
+        #     loss_fct = DiceLoss(device)
+        # elif self.loss_type == 'tversky':
+        #     loss_fct = TverskyLoss(device)
+        # elif self.loss_type == 'focal':
+        #     loss_fct = FocalLoss(device)
+
+        logits, outputs = self._get_features(input_ids, attention_mask, token_type_ids,
+                                             position_ids, head_mask, inputs_embeds)
+
+        outputs = (logits,) + outputs[2:]
+
+        if labels is not None:
+            # loss_fct = nn.CrossEntropyLoss()
+            pad_mask = (labels != pad_token_label_id)
+
+            # Only keep active parts of the loss
+            if attention_mask is not None:
+                # active_loss = attention_mask.view(-1) == 1
+                # active_logits = logits.view(-1, self.num_labels)[active_loss]
+                # active_labels = labels.view(-1)[active_loss]
+                loss_mask = ((attention_mask == 1) & pad_mask)
+            else:
+                # loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+                loss_mask = ((torch.ones(logits.shape) == 1) & pad_mask)
+
+            crf_labels, crf_mask = self._to_crf_pad(labels, loss_mask, pad_token_label_id)
+            crf_logits, _ = self._to_crf_pad(logits, loss_mask, pad_token_label_id)
+
+            loss = self.crf.neg_log_likelihood(crf_logits, crf_mask, crf_labels)
+            # removing mask stuff from the output path is done later in my_crf_ner but it should be kept away
+            # when calculating loss
+            best_path = self.crf(crf_logits, crf_mask)  # (torch.ones(logits.shape) == 1)
+            best_path = self._unpad_crf(best_path, crf_mask, labels, pad_mask)
+            outputs = (loss,) + outputs + (best_path,)
+        else:
+            # removing mask stuff from the output path is done later in my_crf_ner but it should be kept away
+            # when calculating loss
+            if attention_mask is not None:
+                mask = (attention_mask == 1)  # & (labels!=-100))
+            else:
+                mask = torch.ones(logits.shape).bool()  # (labels!=-100)
+            crf_logits, crf_mask = self._to_crf_pad(logits, mask, pad_token_label_id)
+            crf_mask = crf_mask.sum(axis=2) == crf_mask.shape[2]
+            best_path = self.crf(crf_logits, crf_mask)
+            temp_labels = torch.ones(mask.shape) * pad_token_label_id
+            best_path = self._unpad_crf(best_path, crf_mask, temp_labels, mask)
+            outputs = outputs + (best_path,)
+
+        return outputs
+
 
 
 @add_start_docstrings(
