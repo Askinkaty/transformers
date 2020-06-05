@@ -1330,7 +1330,7 @@ class BertForMultipleChoice(BertPreTrainedModel):
 )
 class BertCRFForTokenClassification(BertPreTrainedModel):
     def __init__(self, config):
-        super(BertCRFForTokenClassification).__init__(config)
+        super().__init__(config)
         self.num_labels = config.num_labels
 
         self.bert = BertModel(config)
