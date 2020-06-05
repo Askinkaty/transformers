@@ -1353,7 +1353,7 @@ class BertCRFForTokenClassification(BertPreTrainedModel):
         sequence_output = outputs[0]
         sequence_output = self.dropout(sequence_output)
         feats = self.classifier(sequence_output)
-        return feats, outputs
+        return feats, outputs, all_hidden_states, all_attentions
 
     def _to_crf_pad(self, org_array, org_mask, pad_label_id):
         crf_array = [aa[bb] for aa, bb in zip(org_array, org_mask)]
@@ -1396,9 +1396,10 @@ class BertCRFForTokenClassification(BertPreTrainedModel):
         # elif self.loss_type == 'focal':
         #     loss_fct = FocalLoss(device)
 
-        logits, outputs = self._get_features(input_ids, attention_mask, token_type_ids,
-                                             position_ids, head_mask, inputs_embeds)
-
+        logits, outputs, all_hidden_states, all_attentions = self._get_features(input_ids, attention_mask,
+                                                                                token_type_ids,
+                                                                                position_ids,
+                                                                                head_mask, inputs_embeds)
         outputs = (logits,) + outputs[2:]
 
         if labels is not None:
@@ -1438,7 +1439,7 @@ class BertCRFForTokenClassification(BertPreTrainedModel):
             best_path = self._unpad_crf(best_path, crf_mask, temp_labels, mask)
             outputs = outputs + (best_path,)
 
-        return outputs
+        return outputs, all_hidden_states, all_attentions
 
 
 
