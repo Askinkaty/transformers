@@ -156,6 +156,7 @@ if is_torch_available():
         BertForSequenceClassification,
         BertForMultipleChoice,
         BertForTokenClassification,
+        BertCRFForTokenClassification,
         BertForQuestionAnswering,
         load_tf_weights_in_bert,
         BERT_PRETRAINED_MODEL_ARCHIVE_MAP,
