@@ -1437,9 +1437,9 @@ class BertCRFForTokenClassification(BertPreTrainedModel):
             best_path = self.crf(crf_logits, crf_mask)
             temp_labels = torch.ones(mask.shape) * pad_token_label_id
             best_path = self._unpad_crf(best_path, crf_mask, temp_labels, mask)
-            outputs = outputs + (best_path,)
+            # outputs = outputs + (best_path,)
 
-        return outputs, all_hidden_states, all_attentions
+        return outputs, best_path, all_hidden_states, all_attentions
 
 
 
