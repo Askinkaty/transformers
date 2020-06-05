@@ -46,7 +46,8 @@ class CRF(nn.Module):
         init_transitions[:, self.START_TAG] = -10000.0
         init_transitions[self.STOP_TAG, :] = -10000.0
         if torch.cuda.is_available():
-            init_transitions = init_transitions.cuda(self.gpu)
+            self.device = torch.device("cuda")
+            init_transitions = init_transitions.to(self.device)
         self.transitions = nn.Parameter(init_transitions, requires_grad=True)
 
     def init_hidden_cell(self, batch_size, layer_hidden_dim):
@@ -182,7 +183,7 @@ class CRF(nn.Module):
         _, last_bp = torch.max(last_values, 1)
         pad_zero = autograd.Variable(torch.zeros(batch_size, tag_size)).long()
         if torch.cuda.is_available():
-            pad_zero = pad_zero.cuda(self.gpu)
+            pad_zero = pad_zero.to(self.device)
         back_points.append(pad_zero)
         back_points = torch.cat(back_points).view(seq_len, batch_size, tag_size)
 
@@ -200,7 +201,7 @@ class CRF(nn.Module):
         ## decode from the end, padded position ids are 0, which will be filtered if following evaluation
         decode_idx = autograd.Variable(torch.LongTensor(seq_len, batch_size))
         if torch.cuda.is_available():
-            decode_idx = decode_idx.cuda(self.gpu)
+            decode_idx = decode_idx.to(self.device)
         decode_idx[-1] = pointer.data  # detach()
         for idx in range(len(back_points) - 2, -1, -1):
             pointer = torch.gather(back_points[idx], 1, pointer.contiguous().view(batch_size, 1))
@@ -230,7 +231,7 @@ class CRF(nn.Module):
         ## convert tag value into a new format, recorded label bigram information to index
         new_tags = autograd.Variable(torch.LongTensor(batch_size, seq_len))
         if torch.cuda.is_available():
-            new_tags = new_tags.cuda(self.gpu)
+            new_tags = new_tags.to(self.device)
         for idx in range(seq_len):
             if idx == 0:
                 ## start -> first score
