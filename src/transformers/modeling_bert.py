@@ -1471,7 +1471,8 @@ class BertForTokenClassification(BertPreTrainedModel):
         head_mask=None,
         inputs_embeds=None,
         labels=None,
-        target_mask=None
+        target_mask=None,
+        use_target=False
     ):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`, defaults to :obj:`None`):
@@ -1547,7 +1548,7 @@ class BertForTokenClassification(BertPreTrainedModel):
         # print('Att mask shape', attention_mask.shape)
         # print('All attentions: ', len(all_attentions))
         # print('All att shape:', all_attentions[0].shape)
-        if target_mask:
+        if use_target:
             mask = target_mask
         else:
             mask = attention_mask
