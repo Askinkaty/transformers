@@ -1471,6 +1471,7 @@ class BertForTokenClassification(BertPreTrainedModel):
         head_mask=None,
         inputs_embeds=None,
         labels=None,
+        target_mask=None
     ):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`, defaults to :obj:`None`):
@@ -1546,12 +1547,16 @@ class BertForTokenClassification(BertPreTrainedModel):
         # print('Att mask shape', attention_mask.shape)
         # print('All attentions: ', len(all_attentions))
         # print('All att shape:', all_attentions[0].shape)
+        if target_mask:
+            mask = target_mask
+        else:
+            mask = attention_mask
 
         if labels is not None:
             if self.loss_type and self.loss_type in ['cross_entropy', 'w_cross_entropy']:
                 # Only keep active parts of the loss
-                if attention_mask is not None:
-                    active_loss = attention_mask.view(-1) == 1
+                if mask is not None:
+                    active_loss = mask.view(-1) == 1
                     # print('active loss shape', active_loss.shape)
                     active_logits = logits.view(-1, self.num_labels)
                     # print('act logits', active_logits.shape)
@@ -1569,10 +1574,10 @@ class BertForTokenClassification(BertPreTrainedModel):
                 else:
                     loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             else:
-                if attention_mask is not None:
-                    attention_mask = attention_mask.unsqueeze(-1)
+                if mask is not None:
+                    mask = attention_mask.unsqueeze(-1)
                     # print('att mask shape', attention_mask.shape)
-                    active_loss = attention_mask == 1
+                    active_loss = mask == 1
                     # print('active loss shape', active_loss.shape)
                     active_logits = logits
                     labels = labels.unsqueeze(-1)
