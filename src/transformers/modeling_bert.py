@@ -1527,7 +1527,7 @@ class BertForTokenClassification(BertPreTrainedModel):
 
         outputs, all_hidden_states, all_attentions = self.bert(
             input_ids,
-            attention_mask=None,
+            attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
             head_mask=head_mask,
