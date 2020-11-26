@@ -1,5 +1,6 @@
 ---
-language: german
+language: de
+license: mit
 ---
 
 # 🤗 + 📚 dbmdz German BERT models

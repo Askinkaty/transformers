@@ -1,5 +1,6 @@
 ---
-language: turkish
+language: tr
+license: mit
 ---
 
 # 🤗 + 📚 dbmdz Turkish BERT model
