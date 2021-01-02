@@ -139,8 +139,8 @@ class BertConfig(PretrainedConfig):
         self.num_attention_heads = num_attention_heads
         self.hidden_act = hidden_act
         self.intermediate_size = intermediate_size
-        self.hidden_dropout_prob = hidden_dropout_prob
-        self.attention_probs_dropout_prob = attention_probs_dropout_prob
+        self.hidden_dropout_prob = 0.5
+        self.attention_probs_dropout_prob = 0.5
         self.max_position_embeddings = max_position_embeddings
         self.type_vocab_size = type_vocab_size
         self.initializer_range = initializer_range
