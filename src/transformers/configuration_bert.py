@@ -121,8 +121,8 @@ class BertConfig(PretrainedConfig):
         num_attention_heads=12,
         intermediate_size=3072,
         hidden_act="gelu",
-        hidden_dropout_prob=0.5,
-        attention_probs_dropout_prob=0.5,
+        hidden_dropout_prob=0.1,
+        attention_probs_dropout_prob=0.1,
         max_position_embeddings=512,
         type_vocab_size=2,
         initializer_range=0.02,
@@ -139,8 +139,8 @@ class BertConfig(PretrainedConfig):
         self.num_attention_heads = num_attention_heads
         self.hidden_act = hidden_act
         self.intermediate_size = intermediate_size
-        self.hidden_dropout_prob = 0.5
-        self.attention_probs_dropout_prob = 0.5
+        self.hidden_dropout_prob = 0.2
+        self.attention_probs_dropout_prob = 0.2
         self.max_position_embeddings = max_position_embeddings
         self.type_vocab_size = type_vocab_size
         self.initializer_range = initializer_range
