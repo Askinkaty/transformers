@@ -253,7 +253,7 @@ class BertSelfAttention(nn.Module):
         # seem a bit unusual, but is taken from the original Transformer paper.
         attention_probs = self.dropout(attention_probs)
 
-        print('ATTENTION PROBS', attention_probs.shape)
+        # print('ATTENTION PROBS', attention_probs.shape)
         # Mask heads if we want to
         if head_mask is not None:
             attention_probs = attention_probs * head_mask
