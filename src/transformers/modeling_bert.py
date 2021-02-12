@@ -1549,10 +1549,10 @@ class BertForTokenClassification(BertPreTrainedModel):
         # print('Att mask shape', attention_mask.shape)
         # print('All attentions: ', len(all_attentions))
         # print('All att shape:', all_attentions[0].shape)
-        if use_target:
-            mask = target_mask
-        else:
-            mask = attention_mask
+        # if use_target:
+        #     mask = target_mask
+        # else:
+        mask = attention_mask
 
         if labels is not None:
             if self.loss_type and self.loss_type in ['cross_entropy', 'w_cross_entropy']:
