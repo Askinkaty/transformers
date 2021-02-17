@@ -221,6 +221,7 @@ class BertSelfAttention(nn.Module):
         head_mask=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
+        target=None
     ):
         mixed_query_layer = self.query(hidden_states)
 
@@ -252,6 +253,10 @@ class BertSelfAttention(nn.Module):
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
         attention_probs = self.dropout(attention_probs)
+
+        if target is not None:
+            target = target.unsqueeze(1).repeat(1, attention_probs.shape[-1], 1)  # use variable for seq length
+            attention_probs[:, 0, :, :] = torch.mul(attention_probs[:, 0, :, :], target) #  change 0 head
 
         # print('ATTENTION PROBS', attention_probs.shape) # ATTENTION PROBS torch.Size([8, 12, 256, 256])
         # Mask heads if we want to
@@ -316,12 +321,13 @@ class BertAttention(nn.Module):
         self,
         hidden_states,
         attention_mask=None,
+        target=None,
         head_mask=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
     ):
         self_outputs = self.self(
-            hidden_states, attention_mask, head_mask, encoder_hidden_states, encoder_attention_mask
+            hidden_states, attention_mask, head_mask, encoder_hidden_states, encoder_attention_mask, target
         )
         attention_output = self.output(self_outputs[0], hidden_states)
         outputs = (attention_output,) + self_outputs[1:]  # add attentions if we output them
@@ -374,8 +380,9 @@ class BertLayer(nn.Module):
         head_mask=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
+        target=None
     ):
-        self_attention_outputs = self.attention(hidden_states, attention_mask, head_mask)
+        self_attention_outputs = self.attention(hidden_states, attention_mask, target, head_mask)
         attention_output = self_attention_outputs[0]
         outputs = self_attention_outputs[1:]  # add self attentions if we output attention weights
 
@@ -407,6 +414,7 @@ class BertEncoder(nn.Module):
         head_mask=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
+        target=None
     ):
         all_hidden_states = ()
         all_attentions = ()
@@ -415,7 +423,7 @@ class BertEncoder(nn.Module):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             layer_outputs = layer_module(
-                hidden_states, attention_mask, head_mask[i], encoder_hidden_states, encoder_attention_mask
+                hidden_states, attention_mask, head_mask[i], encoder_hidden_states, encoder_attention_mask, target
             )
             hidden_states = layer_outputs[0]
 
@@ -665,6 +673,7 @@ class BertModel(BertPreTrainedModel):
         inputs_embeds=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
+        target=None
     ):
         r"""
     Return:
@@ -810,6 +819,7 @@ class BertModel(BertPreTrainedModel):
             head_mask=head_mask,
             encoder_hidden_states=encoder_hidden_states,
             encoder_attention_mask=encoder_extended_attention_mask,
+            target=target
         )
         sequence_output = encoder_outputs[0]
         all_hidden_states = encoder_outputs[1]
@@ -1472,8 +1482,7 @@ class BertForTokenClassification(BertPreTrainedModel):
         head_mask=None,
         inputs_embeds=None,
         labels=None,
-        target_mask=None,
-        use_target=False
+        target=None,
     ):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`, defaults to :obj:`None`):
@@ -1527,7 +1536,6 @@ class BertForTokenClassification(BertPreTrainedModel):
         elif self.loss_type == 'focal':
             loss_fct = FocalLoss(device)
 
-
         outputs, all_hidden_states, all_attentions = self.bert(
             input_ids,
             attention_mask=attention_mask,
@@ -1535,6 +1543,7 @@ class BertForTokenClassification(BertPreTrainedModel):
             position_ids=position_ids,
             head_mask=head_mask,
             inputs_embeds=inputs_embeds,
+            target=target
         )
         # print(len(outputs))
         sequence_output = outputs[0]
