@@ -247,6 +247,10 @@ class BertSelfAttention(nn.Module):
             # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
             attention_scores = attention_scores + attention_mask
 
+        if target is not None:
+            target = target.unsqueeze(1).repeat(1, attention_scores.shape[-1], 1)  # use variable for seq length
+            attention_scores[:, 0, :, :] = torch.mul(attention_scores[:, 0, :, :], target)  # change 0 head
+
         # Normalize the attention scores to probabilities.
         attention_probs = nn.Softmax(dim=-1)(attention_scores)
 
@@ -254,9 +258,9 @@ class BertSelfAttention(nn.Module):
         # seem a bit unusual, but is taken from the original Transformer paper.
         attention_probs = self.dropout(attention_probs)
 
-        if target is not None:
-            target = target.unsqueeze(1).repeat(1, attention_probs.shape[-1], 1)  # use variable for seq length
-            attention_probs[:, 0, :, :] = torch.mul(attention_probs[:, 0, :, :], target) #  change 0 head
+        # if target is not None:
+        #     target = target.unsqueeze(1).repeat(1, attention_probs.shape[-1], 1)  # use variable for seq length
+        #     attention_probs[:, 0, :, :] = torch.mul(attention_probs[:, 0, :, :], target) #  change 0 head
 
         # print('ATTENTION PROBS', attention_probs.shape) # ATTENTION PROBS torch.Size([8, 12, 256, 256])
         # Mask heads if we want to
