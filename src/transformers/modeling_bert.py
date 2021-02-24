@@ -158,13 +158,16 @@ class BertEmbeddings(nn.Module):
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=0)
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
+        if config.target_embeddings:
+            self.target_embeddings = nn.Embedding(config.target_vocab_size, config.hidden_size)
 
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
         # any TensorFlow checkpoint file
         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-    def forward(self, input_ids=None, token_type_ids=None, position_ids=None, inputs_embeds=None):
+    def forward(self, input_ids=None, token_type_ids=None, position_ids=None, inputs_embeds=None,
+                target_position_ids=None):
         if input_ids is not None:
             input_shape = input_ids.size()
         else:
@@ -182,8 +185,11 @@ class BertEmbeddings(nn.Module):
             inputs_embeds = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
-
-        embeddings = inputs_embeds + position_embeddings + token_type_embeddings
+        if target_position_ids:
+            target_embeddings = self.target_embeddings(target_position_ids)
+            embeddings = inputs_embeds + position_embeddings + token_type_embeddings + target_embeddings
+        else:
+            embeddings = inputs_embeds + position_embeddings + token_type_embeddings
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
         return embeddings
@@ -257,7 +263,8 @@ class BertSelfAttention(nn.Module):
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
         attention_probs = self.dropout(attention_probs1)
-        attention_probs[:, 0, :, :] = attention_probs1[:, 0, :, :]
+        if target is not None:
+            attention_probs[:, 0, :, :] = attention_probs1[:, 0, :, :]
 
         # print('ATTENTION PROBS', attention_probs.shape) # ATTENTION PROBS torch.Size([8, 12, 256, 256])
         # Mask heads if we want to
@@ -646,7 +653,6 @@ class BertModel(BertPreTrainedModel):
         self.embeddings = BertEmbeddings(config)
         self.encoder = BertEncoder(config)
         self.pooler = BertPooler(config)
-
         self.init_weights()
 
     def get_input_embeddings(self):
@@ -674,7 +680,8 @@ class BertModel(BertPreTrainedModel):
         inputs_embeds=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
-        target=None
+        target=None,
+        target_position_ids=None
     ):
         r"""
     Return:
@@ -812,7 +819,8 @@ class BertModel(BertPreTrainedModel):
             head_mask = [None] * self.config.num_hidden_layers
 
         embedding_output = self.embeddings(
-            input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds
+            input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds,
+            target_position_ids=target_position_ids
         )
         encoder_outputs = self.encoder(
             embedding_output,

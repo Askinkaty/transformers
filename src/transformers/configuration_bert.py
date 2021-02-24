@@ -129,7 +129,9 @@ class BertConfig(PretrainedConfig):
         layer_norm_eps=1e-12,
         loss_type=None,
         loss_weight=None,
-        **kwargs
+        target_embeddings=None,
+        target_vocab_size=2,
+            **kwargs
     ):
         super().__init__(**kwargs)
 
@@ -147,3 +149,5 @@ class BertConfig(PretrainedConfig):
         self.layer_norm_eps = layer_norm_eps
         self.loss_type = loss_type
         self.loss_weight = loss_weight
+        self.target_embeddings = target_embeddings,
+        self.target_vocab_size = target_vocab_size
