@@ -252,15 +252,12 @@ class BertSelfAttention(nn.Module):
             attention_scores[:, 0, :, :] = torch.mul(attention_scores[:, 0, :, :], target)  # change 0 head
 
         # Normalize the attention scores to probabilities.
-        attention_probs = nn.Softmax(dim=-1)(attention_scores)
+        attention_probs1 = nn.Softmax(dim=-1)(attention_scores)
 
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
-        attention_probs = self.dropout(attention_probs)
-
-        # if target is not None:
-        #     target = target.unsqueeze(1).repeat(1, attention_probs.shape[-1], 1)  # use variable for seq length
-        #     attention_probs[:, 0, :, :] = torch.mul(attention_probs[:, 0, :, :], target) #  change 0 head
+        attention_probs = self.dropout(attention_probs1)
+        attention_probs[:, 0, :, :] = attention_probs1[:, 0, :, :]
 
         # print('ATTENTION PROBS', attention_probs.shape) # ATTENTION PROBS torch.Size([8, 12, 256, 256])
         # Mask heads if we want to
