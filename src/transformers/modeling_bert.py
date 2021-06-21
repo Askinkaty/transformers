@@ -1615,6 +1615,105 @@ class BertForTokenClassification(BertPreTrainedModel):
 
 
 @add_start_docstrings(
+    """Bert Model with a token classification head on top (a linear layer on top of
+    the hidden-states output) e.g. for Named-Entity-Recognition (NER) tasks. """,
+    BERT_START_DOCSTRING,
+)
+class MultiHeadBertForTokenClassification(BertPreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+        self.num_labels_main = config.num_labels_main
+        self.num_labels_aux = config.num_labels_aux
+        self.bert = BertModel(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.classifier_main = nn.Linear(config.hidden_size, config.num_labels_main)
+        self.classifier_aux = nn.Linear(config.hidden_size, config.num_labels_aux)
+        self.loss_type = config.loss_type
+        self.loss_weight = config.loss_weight
+        print('LOSS TYPE: ', self.loss_type)
+        self.init_weights()
+
+    @add_start_docstrings_to_callable(BERT_INPUTS_DOCSTRING)
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        main_labels=None,
+        aux_labels=None,
+        target=None,
+    ):
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+        if self.loss_type == 'cross_entropy':
+            loss_fct = CrossEntropyLoss()
+        elif self.loss_type == 'w_cross_entropy':
+            weight = torch.from_numpy(np.array(self.loss_weight)).float().to(device)
+            loss_fct = CrossEntropyLoss(weight=weight)
+
+        outputs, all_hidden_states, all_attentions = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            target=target
+        )
+        sequence_output = outputs[0]
+        sequence_output = self.dropout(sequence_output)
+        logits_main = self.classifier_main(sequence_output)
+        logits_aux = self.classifier_aux(sequence_output)
+
+        outputs_main = (logits_main,) + outputs[2:]  # add hidden states and attention if they are here
+        outputs_aux = (logits_aux,) + outputs[2:]
+        mask = attention_mask
+
+        if main_labels is not None and aux_labels is not None:
+            if self.loss_type and self.loss_type in ['cross_entropy', 'w_cross_entropy']:
+                # Only keep active parts of the loss
+                if mask is not None:
+                    active_loss = mask.view(-1) == 1
+                    active_logits_main = logits_main.view(-1, self.num_labels_main)
+                    active_logits_aux = logits_aux.view(-1, self.num_labels_aux)
+                    active_labels_main = torch.where(
+                        active_loss, main_labels.view(-1), torch.tensor(loss_fct.ignore_index).type_as(main_labels)
+                    )
+                    active_labels_aux = torch.where(
+                        active_loss, aux_labels.view(-1), torch.tensor(loss_fct.ignore_index).type_as(aux_labels)
+                    )
+                    loss_main = loss_fct(active_logits_main, active_labels_main)
+                    loss_aux = loss_fct(active_logits_aux, active_labels_aux)
+                else:
+                    loss_main = loss_fct(logits_main.view(-1, self.num_labels_main), main_labels.view(-1))
+                    loss_aux = loss_fct(logits_aux.view(-1, self.num_labels_aux), aux_labels.view(-1))
+            else:
+                if mask is not None:
+                    mask = attention_mask.unsqueeze(-1)
+                    active_loss = mask == 1
+                    active_logits_main = logits_main
+                    active_logits_aux = logits_aux
+                    labels_main = main_labels.unsqueeze(-1)
+                    labels_aux = aux_labels.unsqueeze(-1)
+                    active_labels_main = torch.where(
+                        active_loss, labels_main, torch.tensor(loss_fct.ignore_index).type_as(labels_main)
+                    )
+                    active_labels_aux = torch.where(
+                        active_loss, labels_aux, torch.tensor(loss_fct.ignore_index).type_as(labels_aux)
+                    )
+                    loss_main = loss_fct(active_logits_main, active_labels_main)
+                    loss_aux = loss_fct(active_logits_aux, active_labels_aux)
+                else:
+                    loss_main = loss_fct(logits_main, main_labels.unsqueeze(-1))
+                    loss_aux = loss_fct(logits_aux, aux_labels.unsqueeze(-1))
+            outputs_main = (loss_main,) + outputs_main
+            outputs_aux = (loss_aux,) + outputs_aux
+
+        return outputs_main, outputs_aux, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
+
+@add_start_docstrings(
     """Bert Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
     layers on top of the hidden-states output to compute `span start logits` and `span end logits`). """,
     BERT_START_DOCSTRING,
