@@ -30,6 +30,7 @@ ROBERTA_PRETRAINED_CONFIG_ARCHIVE_MAP = {
     "distilroberta-base": "https://s3.amazonaws.com/models.huggingface.co/bert/distilroberta-base-config.json",
     "roberta-base-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-openai-detector-config.json",
     "roberta-large-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-openai-detector-config.json",
+    "roberta-base-russian-cased": "/projappl/project_2002016/gramcor/roberta-pretrained/roberta_hug/config.json"
 }
 
 

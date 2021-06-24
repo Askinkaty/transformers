@@ -37,6 +37,7 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP = {
     "distilroberta-base": "https://s3.amazonaws.com/models.huggingface.co/bert/distilroberta-base-pytorch_model.bin",
     "roberta-base-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-openai-detector-pytorch_model.bin",
     "roberta-large-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-openai-detector-pytorch_model.bin",
+    "roberta-base-russian-cased": "/projappl/project_2002016/gramcor/roberta-pretrained/roberta_hug/pytorch_model.bin"
 }
 
 
@@ -537,6 +538,8 @@ class RobertaForTokenClassification(BertPreTrainedModel):
         )
 
         sequence_output = outputs[0]
+        all_hidden_states = outputs[1]
+        all_attentions = outputs[2]
 
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
@@ -557,7 +560,7 @@ class RobertaForTokenClassification(BertPreTrainedModel):
                 loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             outputs = (loss,) + outputs
 
-        return outputs  # (loss), scores, (hidden_states), (attentions)
+        return outputs, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
 
 
 class RobertaClassificationHead(nn.Module):
