@@ -528,7 +528,7 @@ class RobertaForTokenClassification(BertPreTrainedModel):
 
         """
 
-        outputs = self.roberta(
+        outputs, all_hidden_states, all_attentions = self.roberta(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
@@ -538,8 +538,6 @@ class RobertaForTokenClassification(BertPreTrainedModel):
         )
 
         sequence_output = outputs[0]
-        all_hidden_states = outputs[1]
-        all_attentions = outputs[2]
 
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
