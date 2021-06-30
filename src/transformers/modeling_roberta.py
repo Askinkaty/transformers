@@ -37,7 +37,7 @@ ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP = {
     "distilroberta-base": "https://s3.amazonaws.com/models.huggingface.co/bert/distilroberta-base-pytorch_model.bin",
     "roberta-base-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-openai-detector-pytorch_model.bin",
     "roberta-large-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-openai-detector-pytorch_model.bin",
-    "roberta-base-russian-cased": "/projappl/project_2002016/gramcor/roberta-pretrained/roberta_hug/pytorch_model.bin"
+    "roberta-base-russian-cased": "/home/katinska/roberta-pretrained/roberta_hug/pytorch_model.bin"
 }
 
 

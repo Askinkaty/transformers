@@ -47,7 +47,7 @@ BERT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
     "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/config.json",
     "bert-base-dutch-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/wietsedv/bert-base-dutch-cased/config.json",
     # "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/bert_config.json"
-    "bert-base-russian-cased": "/projappl/project_2002016/gramcor/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/bert_config.json"
+    "bert-base-russian-cased": "/home/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/bert_config.json"
 
 }
 
@@ -131,7 +131,9 @@ class BertConfig(PretrainedConfig):
         loss_weight=None,
         target_embeddings=None,
         target_vocab_size=2,
-            **kwargs
+        num_labels_main=None,
+        num_labels_aux=None,
+        **kwargs
     ):
         super().__init__(**kwargs)
 
@@ -150,4 +152,6 @@ class BertConfig(PretrainedConfig):
         self.loss_type = loss_type
         self.loss_weight = loss_weight
         self.target_embeddings = target_embeddings,
-        self.target_vocab_size = target_vocab_size
+        self.target_vocab_size = target_vocab_size,
+        self.num_labels_main=num_labels_main,
+        self.num_labels_aux=num_labels_aux

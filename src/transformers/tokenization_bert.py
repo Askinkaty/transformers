@@ -51,7 +51,7 @@ PRETRAINED_VOCAB_FILES_MAP = {
         "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/vocab.txt",
         "bert-base-dutch-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/wietsedv/bert-base-dutch-cased/vocab.txt",
         # "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/vocab.txt"
-        "bert-base-russian-cased": "/projappl/project_2002016/gramcor/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/vocab.txt"
+    "bert-base-russian-cased": "/home/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/vocab.txt"
 }
 }
 

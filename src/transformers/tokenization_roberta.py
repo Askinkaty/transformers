@@ -38,7 +38,7 @@ PRETRAINED_VOCAB_FILES_MAP = {
         "distilroberta-base": "https://s3.amazonaws.com/models.huggingface.co/bert/distilroberta-base-vocab.json",
         "roberta-base-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-vocab.json",
         "roberta-large-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-vocab.json",
-        "roberta-base-russian-cased": "/projappl/project_2002016/gramcor/roberta-pretrained/roberta_hug/vocab.json"
+        "roberta-base-russian-cased": "/home/katinska/roberta-pretrained/roberta_hug/vocab.json"
     },
     "merges_file": {
         "roberta-base": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-merges.txt",
@@ -47,7 +47,7 @@ PRETRAINED_VOCAB_FILES_MAP = {
         "distilroberta-base": "https://s3.amazonaws.com/models.huggingface.co/bert/distilroberta-base-merges.txt",
         "roberta-base-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-merges.txt",
         "roberta-large-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-merges.txt",
-        "roberta-base-russian-cased": "/projappl/project_2002016/gramcor/roberta-pretrained/roberta_hug/merges.txt"
+        "roberta-base-russian-cased": "/home/katinska/roberta-pretrained/roberta_hug/merges.txt"
     },
 }
 
