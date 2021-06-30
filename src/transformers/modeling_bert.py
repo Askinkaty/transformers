@@ -61,8 +61,8 @@ BERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     "bert-base-finnish-cased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-cased-v1/pytorch_model.bin",
     "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/pytorch_model.bin",
     "bert-base-dutch-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/wietsedv/bert-base-dutch-cased/pytorch_model.bin",
-    # "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
-    "bert-base-russian-cased": "/home/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
+    "bert-base-russian-cased": "/proj/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
+    # "bert-base-russian-cased": "/home/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
 
 }
 
