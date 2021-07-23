@@ -1687,8 +1687,8 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         all_aux_losses = dict()
         final_aux_outputs = dict()
         outputs_main = (logits_main,) + outputs[2:]
-        for logits in all_aux_logits:
-            all_aux_outputs[logits[1]] = (logits[0],) + outputs[2:]
+        for l in all_aux_logits:
+            all_aux_outputs[l[1]] = (l[0],) + outputs[2:]
         mask = attention_mask
 
         if main_labels is not None and aux_ids is not None:
@@ -1703,6 +1703,11 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
                     loss_main = loss_fct(active_logits_main, active_labels_main)
                     for j, lg in enumerate(all_aux_logits):
                         logits, name = lg
+                        print(name)
+                        print(len(self.aux_tasks[name]))
+                        print(aux_ids[j].shape)
+                        
+
                         active_logits_aux = logits.view(-1, len(self.aux_tasks[name]))
                         active_labels_aux = torch.where(
                             active_loss, aux_ids[j].view(-1),
