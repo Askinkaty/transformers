@@ -34,7 +34,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from .crf import *
 from torch.nn.utils.rnn import pad_sequence
 
-
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -1653,7 +1653,7 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         head_mask=None,
         inputs_embeds=None,
         main_labels=None,
-        aux_labels=None,
+        aux_ids=None,
     ):
         device = input_ids.device if input_ids is not None else inputs_embeds.device
         if self.loss_type == 'cross_entropy':
@@ -1683,14 +1683,15 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         logits_verbform = self.classifier_verbform(sequence_output), 'VerbForm'
         all_aux_logits = [logits_pos, logits_gender, logits_number, logits_case, logits_tense,
                       logits_aspect, logits_person, logits_verbform]
-        all_aux_outputs = []
-        all_aux_losses = []
+        all_aux_outputs = dict()
+        all_aux_losses = dict()
+        final_aux_outputs = dict()
         outputs_main = (logits_main,) + outputs[2:]
         for logits in all_aux_logits:
-            all_aux_outputs.append((logits[0],) + outputs[2:])
+            all_aux_outputs[logits[1]] = (logits[0],) + outputs[2:]
         mask = attention_mask
 
-        if main_labels is not None and aux_labels is not None:
+        if main_labels is not None and aux_ids is not None:
             if self.loss_type and self.loss_type in ['cross_entropy', 'w_cross_entropy']:
                 # Only keep active parts of the loss
                 if mask is not None:
@@ -1704,17 +1705,17 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
                         logits, name = lg
                         active_logits_aux = logits.view(-1, len(self.aux_tasks[name]))
                         active_labels_aux = torch.where(
-                            active_loss, aux_labels[name].view(-1),
-                            torch.tensor(loss_fct.ignore_index).type_as(aux_labels[name])
+                            active_loss, aux_ids[name].view(-1),
+                            torch.tensor(loss_fct.ignore_index).type_as(aux_ids[name])
                         )
                         loss_aux = loss_fct(active_logits_aux, active_labels_aux)
-                        all_aux_losses.append(loss_aux)
+                        all_aux_losses[name] = loss_aux
                 else:
                     loss_main = loss_fct(logits_main.view(-1, self.num_labels_main), main_labels.view(-1))
                     for lg in all_aux_logits:
                         logits, name = lg
-                        loss_aux = loss_fct(logits.view(-1, len(self.aux_tasks[name])), aux_labels[name].view(-1))
-                        all_aux_losses.append(loss_aux)
+                        loss_aux = loss_fct(logits.view(-1, len(self.aux_tasks[name])), aux_ids[name].view(-1))
+                        all_aux_losses[name] = loss_aux
             else:
                 if mask is not None:
                     mask = attention_mask.unsqueeze(-1)
@@ -1728,23 +1729,24 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
                     for lg in all_aux_logits:
                         logits, name = lg
                         active_logits_aux = logits
-                        labels_aux = aux_labels[name].unsqueeze(-1)
+                        labels_aux = aux_ids[name].unsqueeze(-1)
                         active_labels_aux = torch.where(
                             active_loss, labels_aux, torch.tensor(loss_fct.ignore_index).type_as(labels_aux)
                         )
                         loss_aux = loss_fct(active_logits_aux, active_labels_aux)
-                        all_aux_losses.append(loss_aux)
+                        all_aux_losses[name] = loss_aux
                 else:
                     loss_main = loss_fct(logits_main, main_labels.unsqueeze(-1))
                     for lg in all_aux_logits:
                         logits, name = lg
-                        loss_aux = loss_fct(logits, aux_labels[name].unsqueeze(-1))
-                        all_aux_losses.append(loss_aux)
+                        loss_aux = loss_fct(logits, aux_ids[name].unsqueeze(-1))
+                        all_aux_losses[name] = loss_aux
             outputs_main = (loss_main,) + outputs_main
-            for j, loss_aux in enumerate(all_aux_losses):
-                all_aux_outputs[j] = (loss_aux,) + all_aux_outputs[j]
+            final_aux_outputs = copy.deepcopy(all_aux_outputs)
+            for name, aux_loss in all_aux_losses.items():
+                final_aux_outputs[name] = (aux_loss,) + all_aux_outputs[name]
 
-        return outputs_main, all_aux_outputs, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
+        return outputs_main, final_aux_outputs, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
 
 @add_start_docstrings(
     """Bert Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
