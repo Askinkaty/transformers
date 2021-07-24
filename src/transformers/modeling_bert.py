@@ -1690,7 +1690,8 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         for l in all_aux_logits:
             all_aux_outputs[l[1]] = (l[0],) + outputs[2:]
         mask = attention_mask
-
+        print(len(aux_ids))
+        print(aux_ids.shape)
         if main_labels is not None and aux_ids is not None:
             if self.loss_type and self.loss_type in ['cross_entropy', 'w_cross_entropy']:
                 # Only keep active parts of the loss
