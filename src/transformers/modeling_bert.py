@@ -1717,7 +1717,7 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
                         active_logits_aux = logits_aux.view(-1, len(self.aux_tasks[name]))
                         active_labels_aux = torch.where(
                             active_loss, aux_ids[j].view(-1),
-                            torch.tensor(loss_fct.ignore_index).type_as(torch.cuda.LongTensor)
+                            torch.tensor(loss_fct.ignore_index).type(torch.cuda.LongTensor)
                         )
                         loss_aux = loss_fct(active_logits_aux, active_labels_aux)
                         all_aux_losses[name] = loss_aux
