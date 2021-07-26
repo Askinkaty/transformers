@@ -1630,6 +1630,7 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         self.classifier_main = nn.Linear(config.hidden_size, config.num_labels_main)
         # Aux tasks     tasks = ['POS', 'Gender', 'Number', 'Case', 'Tense', 'Aspect', 'Person', 'VerbForm']
         self.classifier_pos = nn.Linear(config.hidden_size, len(self.aux_tasks['POS']))
+        print('Number:', len(self.aux_tasks['Number']))
         self.classifier_gender = nn.Linear(config.hidden_size, len(self.aux_tasks['Gender']))
         self.classifier_number = nn.Linear(config.hidden_size, len(self.aux_tasks['Number']))
         self.classifier_case = nn.Linear(config.hidden_size, len(self.aux_tasks['Case']))
@@ -1713,7 +1714,9 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
                         print(aux_ids[j].shape)
                         print(aux_ids[j].type())
                         print(torch.tensor(loss_fct.ignore_index).type())
-                        # print(torch.tensor(loss_fct.ignore_index).type_as(aux_ids[j]))
+                        print(aux_ids[j])
+                        print(loss_fct)
+                        print(torch.tensor(loss_fct))
                         active_logits_aux = logits_aux.view(-1, len(self.aux_tasks[name]))
                         active_labels_aux = torch.where(
                             active_loss, aux_ids[j].view(-1),
