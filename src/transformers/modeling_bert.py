@@ -62,7 +62,7 @@ BERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     "bert-base-finnish-uncased-v1": "https://s3.amazonaws.com/models.huggingface.co/bert/TurkuNLP/bert-base-finnish-uncased-v1/pytorch_model.bin",
     "bert-base-dutch-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/wietsedv/bert-base-dutch-cased/pytorch_model.bin",
     "bert-base-russian-cased": "/projappl/project_2002016/gramcor/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
-    # "bert-base-russian-cased": "/home/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
+#     "bert-base-russian-cased": "/home/katinska/bert-pretraned/rubert_cased_L-12_H-768_A-12_pt/pytorch_model.bin"
 
 }
 
@@ -1630,7 +1630,6 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         self.classifier_main = nn.Linear(config.hidden_size, config.num_labels_main)
         # Aux tasks     tasks = ['POS', 'Gender', 'Number', 'Case', 'Tense', 'Aspect', 'Person', 'VerbForm']
         self.classifier_pos = nn.Linear(config.hidden_size, len(self.aux_tasks['POS']))
-        print('Number:', len(self.aux_tasks['Number']))
         self.classifier_gender = nn.Linear(config.hidden_size, len(self.aux_tasks['Gender']))
         self.classifier_number = nn.Linear(config.hidden_size, len(self.aux_tasks['Number']))
         self.classifier_case = nn.Linear(config.hidden_size, len(self.aux_tasks['Case']))
@@ -1682,53 +1681,57 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         logits_aspect = self.classifier_aspect(sequence_output), 'Aspect'
         logits_person = self.classifier_person(sequence_output), 'Person'
         logits_verbform = self.classifier_verbform(sequence_output), 'VerbForm'
+        
         all_aux_logits = [logits_pos, logits_gender, logits_number, logits_case, logits_tense,
                       logits_aspect, logits_person, logits_verbform]
+        
+#         all_aux_logits = torch.stack(all_aux_logits)
+#         print('All aux logits shape', all_aux_logits.shape)
         all_aux_outputs = dict()
         all_aux_losses = dict()
         final_aux_outputs = dict()
-        outputs_main = (logits_main,) + outputs[2:]
+        outputs_main = (logits_main,) + outputs[2:]        
         for l in all_aux_logits:
             all_aux_outputs[l[1]] = (l[0],) + outputs[2:]
         mask = attention_mask
-        print(len(aux_ids))
-        print(aux_ids.shape)
+#         print(len(aux_ids))
+#         print(aux_ids.shape)
         if main_labels is not None and aux_ids is not None:
             if self.loss_type and self.loss_type in ['cross_entropy', 'w_cross_entropy']:
                 # Only keep active parts of the loss
                 if mask is not None:
                     active_loss = mask.view(-1) == 1
-                    active_logits_main = logits_main.view(-1, self.num_labels_main)
-                    print(main_labels.shape)
-                    print(active_loss.shape)
-
+                    active_logits_main = logits_main.view(-1, self.num_labels_main)                   
+#                     print('Main labels', main_labels.shape)
+#                     print('Active logits main shape', active_logits_main.shape)
                     active_labels_main = torch.where(
                         active_loss, main_labels.view(-1), torch.tensor(loss_fct.ignore_index).type_as(main_labels)
-                    )
-
+                       )
+#                     print('Main labels view -1 ', main_labels.view(-1).shape)
                     loss_main = loss_fct(active_logits_main, active_labels_main)
                     for j, lg in enumerate(all_aux_logits):
                         logits_aux, name = lg
-                        print(name)
-                        print(len(self.aux_tasks[name]))
-                        print(aux_ids[j].shape)
-                        print(aux_ids[j].type())
-                        print(torch.tensor(loss_fct.ignore_index).type())
-                        print(aux_ids[j])
-                        print(loss_fct)
-                        print(torch.tensor(loss_fct.ignore_index).type(torch.cuda.LongTensor))
+#                         print(name)
+                        aux_labels = aux_ids[:,j,:,]
+#                         print(len(self.aux_tasks[name]))
+#                         print('Aux ids shape', aux_labels.shape)
+#                         print(aux_labels.type())
+#                         print('Aux ids', aux_labels)
+#                         print('Active loss shape: ', active_loss.shape)
+#                         print(torch.tensor(loss_fct.ignore_index).type_as(aux_labels))
                         active_logits_aux = logits_aux.view(-1, len(self.aux_tasks[name]))
+#                         print('Active logits aux', active_logits_aux.shape)
                         active_labels_aux = torch.where(
-                            active_loss, aux_ids[j].view(-1),
-                            torch.tensor(loss_fct.ignore_index).type(torch.cuda.LongTensor)
-                        )
+                            active_loss, aux_labels.reshape(-1),
+                            torch.tensor(loss_fct.ignore_index).type_as(aux_labels))
                         loss_aux = loss_fct(active_logits_aux, active_labels_aux)
                         all_aux_losses[name] = loss_aux
                 else:
                     loss_main = loss_fct(logits_main.view(-1, self.num_labels_main), main_labels.view(-1))
                     for j, lg in enumerate(all_aux_logits):
                         logits_aux, name = lg
-                        loss_aux = loss_fct(logits_aux.view(-1, len(self.aux_tasks[name])), aux_ids[j].view(-1))
+                        aux_labels = aux_ids[:,j,:,]
+                        loss_aux = loss_fct(logits_aux.view(-1, len(self.aux_tasks[name])), aux_labels.reshape(-1))
                         all_aux_losses[name] = loss_aux
             else:
                 if mask is not None:
@@ -1743,7 +1746,7 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
                     for j, lg in enumerate(all_aux_logits):
                         logits_aux, name = lg
                         active_logits_aux = logits_aux
-                        labels_aux = aux_ids[j].unsqueeze(-1)
+                        labels_aux = aux_ids[:,j,:,].unsqueeze(-1)
                         active_labels_aux = torch.where(
                             active_loss, labels_aux, torch.tensor(loss_fct.ignore_index).type_as(labels_aux)
                         )
@@ -1753,10 +1756,11 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
                     loss_main = loss_fct(logits_main, main_labels.unsqueeze(-1))
                     for j, lg in enumerate(all_aux_logits):
                         logits_aux, name = lg
-                        loss_aux = loss_fct(logits_aux, aux_ids[j].unsqueeze(-1))
+                        labels_aux = aux_ids[:,j,:,].unsqueeze(-1)
+                        loss_aux = loss_fct(logits_aux, labels_aux)
                         all_aux_losses[name] = loss_aux
             outputs_main = (loss_main,) + outputs_main
-            final_aux_outputs = copy.deepcopy(all_aux_outputs)
+            final_aux_outputs = dict()
             for name, aux_loss in all_aux_losses.items():
                 final_aux_outputs[name] = (aux_loss,) + all_aux_outputs[name]
 
