@@ -1624,6 +1624,7 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels_main = config.num_labels_main
+        self.num_sent_labels = config.num_sent_labels
         self.aux_tasks = config.aux_tasks
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -1638,6 +1639,7 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         self.classifier_person = nn.Linear(config.hidden_size, len(self.aux_tasks['Person']))
         self.classifier_verbform = nn.Linear(config.hidden_size, len(self.aux_tasks['VerbForm']))
 
+        self.sentence_classifier = nn.Linear(config.hidden_size, config.num_sent_labels)
         self.loss_type = config.loss_type
         self.loss_weight = config.loss_weight
         print('LOSS TYPE: ', self.loss_type)
@@ -1654,6 +1656,7 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         inputs_embeds=None,
         main_labels=None,
         aux_ids=None,
+        sent_labels=None
     ):
         device = input_ids.device if input_ids is not None else inputs_embeds.device
         if self.loss_type == 'cross_entropy':
@@ -1681,7 +1684,11 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         logits_aspect = self.classifier_aspect(sequence_output), 'Aspect'
         logits_person = self.classifier_person(sequence_output), 'Person'
         logits_verbform = self.classifier_verbform(sequence_output), 'VerbForm'
-        
+
+        pooled_output = outputs[1]
+        pooled_output = self.dropout(pooled_output)
+        sent_logits = self.sentence_classifier(pooled_output)
+
         all_aux_logits = [logits_pos, logits_gender, logits_number, logits_case, logits_tense,
                       logits_aspect, logits_person, logits_verbform]
         
@@ -1693,6 +1700,8 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         outputs_main = (logits_main,) + outputs[2:]        
         for l in all_aux_logits:
             all_aux_outputs[l[1]] = (l[0],) + outputs[2:]
+        sent_outputs = (sent_logits,) + outputs[2:]
+
         mask = attention_mask
 #         print(len(aux_ids))
 #         print(aux_ids.shape)
@@ -1759,12 +1768,16 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
                         labels_aux = aux_ids[:,j,:,].unsqueeze(-1)
                         loss_aux = loss_fct(logits_aux, labels_aux)
                         all_aux_losses[name] = loss_aux
+            if sent_labels is not None:
+                sent_loss = loss_fct(sent_logits.view(-1, self.num_sent_labels), sent_labels.view(-1))
+
             outputs_main = (loss_main,) + outputs_main
             final_aux_outputs = dict()
             for name, aux_loss in all_aux_losses.items():
                 final_aux_outputs[name] = (aux_loss,) + all_aux_outputs[name]
+            sent_main = (sent_loss,) + sent_outputs
 
-        return outputs_main, final_aux_outputs, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
+        return outputs_main, final_aux_outputs, sent_main, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
 
 @add_start_docstrings(
     """Bert Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear

@@ -134,6 +134,7 @@ class BertConfig(PretrainedConfig):
         target_vocab_size=2,
         num_labels_main=None,
         aux_tasks=None,
+        num_sent_labels=None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -155,5 +156,6 @@ class BertConfig(PretrainedConfig):
         self.target_embeddings = target_embeddings,
         self.target_vocab_size = target_vocab_size,
         self.num_labels_main = num_labels_main,
-        self.aux_tasks = aux_tasks
+        self.aux_tasks = aux_tasks,
+        self.num_sent_labels = num_sent_labels
 
