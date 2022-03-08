@@ -1620,7 +1620,9 @@ class BertForTokenClassification(BertPreTrainedModel):
     the hidden-states output) e.g. for Named-Entity-Recognition (NER) tasks. """,
     BERT_START_DOCSTRING,
 )
-class MultiHeadBertForTokenClassification(BertPreTrainedModel):
+
+
+class MultiHeadBertForTokenSentenceClassification(BertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels_main = config.num_labels_main
@@ -1647,16 +1649,16 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
 
     @add_start_docstrings_to_callable(BERT_INPUTS_DOCSTRING)
     def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        main_labels=None,
-        aux_ids=None,
-        sent_labels=None
+            self,
+            input_ids=None,
+            attention_mask=None,
+            token_type_ids=None,
+            position_ids=None,
+            head_mask=None,
+            inputs_embeds=None,
+            main_labels=None,
+            aux_ids=None,
+            sent_labels=None
     ):
         device = input_ids.device if input_ids is not None else inputs_embeds.device
         if self.loss_type == 'cross_entropy':
@@ -1690,6 +1692,143 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         sent_logits = self.sentence_classifier(pooled_output)
 
         all_aux_logits = [logits_pos, logits_gender, logits_number, logits_case, logits_tense,
+                          logits_aspect, logits_person, logits_verbform]
+
+        all_aux_outputs = dict()
+        all_aux_losses = dict()
+        final_aux_outputs = dict()
+        outputs_main = (logits_main,) + outputs[2:]
+        for l in all_aux_logits:
+            all_aux_outputs[l[1]] = (l[0],) + outputs[2:]
+        sent_outputs = (sent_logits,) + outputs[2:]
+
+        mask = attention_mask
+        if main_labels is not None and aux_ids is not None:
+            if self.loss_type and self.loss_type in ['cross_entropy', 'w_cross_entropy']:
+                # Only keep active parts of the loss
+                if mask is not None:
+                    active_loss = mask.view(-1) == 1
+                    active_logits_main = logits_main.view(-1, self.num_labels_main)
+                    active_labels_main = torch.where(
+                        active_loss, main_labels.view(-1), torch.tensor(loss_fct.ignore_index).type_as(main_labels)
+                    )
+                    loss_main = loss_fct(active_logits_main, active_labels_main)
+                    for j, lg in enumerate(all_aux_logits):
+                        logits_aux, name = lg
+                        aux_labels = aux_ids[:, j, :, ]
+                        active_logits_aux = logits_aux.view(-1, len(self.aux_tasks[name]))
+                        active_labels_aux = torch.where(
+                            active_loss, aux_labels.reshape(-1),
+                            torch.tensor(loss_fct.ignore_index).type_as(aux_labels))
+                        loss_aux = loss_fct(active_logits_aux, active_labels_aux)
+                        all_aux_losses[name] = loss_aux
+                else:
+                    loss_main = loss_fct(logits_main.view(-1, self.num_labels_main), main_labels.view(-1))
+                    for j, lg in enumerate(all_aux_logits):
+                        logits_aux, name = lg
+                        aux_labels = aux_ids[:, j, :, ]
+                        loss_aux = loss_fct(logits_aux.view(-1, len(self.aux_tasks[name])), aux_labels.reshape(-1))
+                        all_aux_losses[name] = loss_aux
+            else:
+                if mask is not None:
+                    mask = attention_mask.unsqueeze(-1)
+                    active_loss = mask == 1
+                    active_logits_main = logits_main
+                    labels_main = main_labels.unsqueeze(-1)
+                    active_labels_main = torch.where(
+                        active_loss, labels_main, torch.tensor(loss_fct.ignore_index).type_as(labels_main)
+                    )
+                    loss_main = loss_fct(active_logits_main, active_labels_main)
+                    for j, lg in enumerate(all_aux_logits):
+                        logits_aux, name = lg
+                        active_logits_aux = logits_aux
+                        labels_aux = aux_ids[:, j, :, ].unsqueeze(-1)
+                        active_labels_aux = torch.where(
+                            active_loss, labels_aux, torch.tensor(loss_fct.ignore_index).type_as(labels_aux)
+                        )
+                        loss_aux = loss_fct(active_logits_aux, active_labels_aux)
+                        all_aux_losses[name] = loss_aux
+                else:
+                    loss_main = loss_fct(logits_main, main_labels.unsqueeze(-1))
+                    for j, lg in enumerate(all_aux_logits):
+                        logits_aux, name = lg
+                        labels_aux = aux_ids[:, j, :, ].unsqueeze(-1)
+                        loss_aux = loss_fct(logits_aux, labels_aux)
+                        all_aux_losses[name] = loss_aux
+            if sent_labels is not None:
+                sent_loss = loss_fct(sent_logits.view(-1, self.num_sent_labels), sent_labels.view(-1))
+
+            outputs_main = (loss_main,) + outputs_main
+            final_aux_outputs = dict()
+            for name, aux_loss in all_aux_losses.items():
+                final_aux_outputs[name] = (aux_loss,) + all_aux_outputs[name]
+            sent_main = (sent_loss,) + sent_outputs
+        return outputs_main, final_aux_outputs, sent_main, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
+
+
+class MultiHeadBertForTokenClassification(BertPreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+        self.num_labels_main = config.num_labels_main
+        self.aux_tasks = config.aux_tasks
+        self.bert = BertModel(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.classifier_main = nn.Linear(config.hidden_size, config.num_labels_main)
+        # Aux tasks     tasks = ['POS', 'Gender', 'Number', 'Case', 'Tense', 'Aspect', 'Person', 'VerbForm']
+        self.classifier_pos = nn.Linear(config.hidden_size, len(self.aux_tasks['POS']))
+        self.classifier_gender = nn.Linear(config.hidden_size, len(self.aux_tasks['Gender']))
+        self.classifier_number = nn.Linear(config.hidden_size, len(self.aux_tasks['Number']))
+        self.classifier_case = nn.Linear(config.hidden_size, len(self.aux_tasks['Case']))
+        self.classifier_tense = nn.Linear(config.hidden_size, len(self.aux_tasks['Tense']))
+        self.classifier_aspect = nn.Linear(config.hidden_size, len(self.aux_tasks['Aspect']))
+        self.classifier_person = nn.Linear(config.hidden_size, len(self.aux_tasks['Person']))
+        self.classifier_verbform = nn.Linear(config.hidden_size, len(self.aux_tasks['VerbForm']))
+
+        self.loss_type = config.loss_type
+        self.loss_weight = config.loss_weight
+        print('LOSS TYPE: ', self.loss_type)
+        self.init_weights()
+
+    @add_start_docstrings_to_callable(BERT_INPUTS_DOCSTRING)
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        main_labels=None,
+        aux_ids=None,
+    ):
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+        if self.loss_type == 'cross_entropy':
+            loss_fct = CrossEntropyLoss()
+        elif self.loss_type == 'w_cross_entropy':
+            weight = torch.from_numpy(np.array(self.loss_weight)).float().to(device)
+            loss_fct = CrossEntropyLoss(weight=weight)
+
+        outputs, all_hidden_states, all_attentions = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+        )
+        sequence_output = outputs[0]
+        sequence_output = self.dropout(sequence_output)
+        logits_main = self.classifier_main(sequence_output)
+        logits_pos = self.classifier_pos(sequence_output), 'POS'
+        logits_gender = self.classifier_gender(sequence_output), 'Gender'
+        logits_number = self.classifier_number(sequence_output), 'Number'
+        logits_case = self.classifier_case(sequence_output), 'Case'
+        logits_tense = self.classifier_tense(sequence_output), 'Tense'
+        logits_aspect = self.classifier_aspect(sequence_output), 'Aspect'
+        logits_person = self.classifier_person(sequence_output), 'Person'
+        logits_verbform = self.classifier_verbform(sequence_output), 'VerbForm'
+
+        all_aux_logits = [logits_pos, logits_gender, logits_number, logits_case, logits_tense,
                       logits_aspect, logits_person, logits_verbform]
         
 #         all_aux_logits = torch.stack(all_aux_logits)
@@ -1700,8 +1839,6 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
         outputs_main = (logits_main,) + outputs[2:]        
         for l in all_aux_logits:
             all_aux_outputs[l[1]] = (l[0],) + outputs[2:]
-        sent_outputs = (sent_logits,) + outputs[2:]
-
         mask = attention_mask
 #         print(len(aux_ids))
 #         print(aux_ids.shape)
@@ -1768,16 +1905,13 @@ class MultiHeadBertForTokenClassification(BertPreTrainedModel):
                         labels_aux = aux_ids[:,j,:,].unsqueeze(-1)
                         loss_aux = loss_fct(logits_aux, labels_aux)
                         all_aux_losses[name] = loss_aux
-            if sent_labels is not None:
-                sent_loss = loss_fct(sent_logits.view(-1, self.num_sent_labels), sent_labels.view(-1))
 
             outputs_main = (loss_main,) + outputs_main
             final_aux_outputs = dict()
             for name, aux_loss in all_aux_losses.items():
                 final_aux_outputs[name] = (aux_loss,) + all_aux_outputs[name]
-            sent_main = (sent_loss,) + sent_outputs
 
-        return outputs_main, final_aux_outputs, sent_main, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
+        return outputs_main, final_aux_outputs, all_hidden_states, all_attentions  # (loss), scores, (hidden_states), (attentions)
 
 @add_start_docstrings(
     """Bert Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
